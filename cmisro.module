@@ -1,0 +1,156 @@
+<?php
+/**
+ * @copyright 2014 City of Bloomington, Indiana
+ * @license http://www.gnu.org/licenses/agpl.txt GNU/AGPL, see LICENSE.txt
+ * @author Cliff Ingham <inghamn@bloomington.in.gov>
+ *
+ * This module is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This module is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+function cmisro_admin_form()
+{
+	return system_settings_form([
+		'cmisro_url' => [
+			'#type'          => 'textfield',
+			'#default_value' => variable_get('cmisro_url'),
+			'#title'         => 'CMIS Repository URL',
+			'#description'   => 'Your CMIS 1.1 browser binding repository URL.  This should be the URL to the JSON interface',
+			'#required'      => true
+		],
+		'cmisro_username' => [
+			'#type'          => 'textfield',
+			'#default_value' => variable_get('cmisro_username'),
+			'#title'         => 'CMIS Username',
+			'#description'   => 'A username that should have read-only access to your CMIS server',
+			'#required'      => true
+		],
+		'cmisro_password' => [
+			'#type'          => 'textfield',
+			'#default_value' => variable_get('cmisro_password'),
+			'#title'         => 'CMIS Password',
+			'#description'   => 'The password for the read-only account on your CMIS server',
+			'#required'      => true
+		]
+	]);
+}
+
+/**
+ * Verifies the connection to CKAN
+ *
+ * @implements hook_admin_validate()
+ */
+function cmisro_admin_form_validate($form, &$form_state)
+{
+	// Make sure we can get back the media sizes
+	$url = $form_state['values']['cmisro_url'];
+	$response = drupal_http_request($url);
+	$data = json_decode($response->data);
+	if (!count($data)) {
+		form_set_error('cmisro_url', 'Cannot connect to CMIS server.  Make sure the URL is valid.');
+	}
+}
+
+function cmisro_menu()
+{
+	return [
+		'admin/config/services/cmisro' => [
+			'title'           => 'CMIS settings',
+			'description'     => 'Settings for the read-only CMIS module',
+			'page callback'   => 'drupal_get_form',
+			'page arguments'  => ['cmisro_admin_form'],
+			'access arguments'=> ['administer site configuration'],
+			'type'            => MENU_NORMAL_ITEM
+		]
+	];
+}
+
+function cmisro_field_info()
+{
+	return [
+		'cmisro' => [
+			'label'             => 'CMIS Reference',
+			'description'       => 'A reference to one or more documents in the CMIS server',
+			'default_widget'    => 'cmisro_chooser',
+			'default_formatter' => 'cmisro_formatter'
+		]
+	];
+}
+
+function cmisro_field_widget_info()
+{
+	return [
+		'cmisro_chooser' => [
+			'label'       => 'CMIS Reference',
+			'field types' => ['cmisro']
+		]
+	];
+}
+
+function cmisro_field_widget_form(&$form, &$form_state, &$field, &$instance, &$langcode, &$items, &$delta, &$element)
+{
+	if ($instance['widget']['type'] == 'cmisro_chooser') {
+		$element['reference'] = [
+			'#type'          => 'textfield',
+            '#title'         => isset($instance['label'])        ? $instance['label']       : 'CMIS Reference',
+			'#default_value' => isset($items[$delta])            ? $items[$delta]           : null,
+            '#description'   => !empty($instance['description']) ? $instance['description'] : null
+		];
+	}
+	return $element;
+}
+
+function cmisro_field_is_empty($item, $field)
+{
+	if ($field['type'] == 'cmisro') {
+		return empty($item['reference']);
+	}
+}
+
+function cmisro_field_formatter_info()
+{
+	return [
+		'cmisro_formatter' => [
+			'label'       => t('Default'),
+			'field types' => ['cmisro']
+		]
+	];
+}
+
+function cmisro_field_formatter_view($entity_type, $entity, $field, $instance, $lang, $items, $display)
+{
+	$element = [];
+	switch ($display['type']) {
+		case 'cmisro_formatter':
+			foreach ($items as $delta => $item) {
+				// Look up the item reference in the CMIS server
+				$value = $item['reference'];
+
+				$element[$delta] = [
+					'#value' => theme('cmisro_reference', ['reference' => $value])
+				];
+			}
+		break;
+	}
+	return $element;
+}
+
+function cmisro_theme($existing, $type, $theme, $path)
+{
+	return [
+		'cmisro_list' => [
+			'variables' => ['reference' => null],
+			'template'  => 'cmisro-list',
+			'path'      => __DIR__.'/templates',
+		]
+	];
+}

@@ -1,2 +1,4 @@
 name = CMIS Read-Only
 core = 7.x
+
+dependencies[] = field_ui
