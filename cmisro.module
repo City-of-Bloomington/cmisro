@@ -17,9 +17,18 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+include __DIR__.'/library/cmis_service.php';
+
 function cmisro_admin_form()
 {
 	return system_settings_form([
+		'cmisro_repositoryId' => [
+			'#type'          => 'textfield',
+			'#default_value' => variable_get('cmisro_repositoryId'),
+			'#title'         => 'CMIS Repository ID',
+			'#description'   => 'The ID of your CMIS repository.',
+			'#required'      => true
+		],
 		'cmisro_url' => [
 			'#type'          => 'textfield',
 			'#default_value' => variable_get('cmisro_url'),
@@ -51,12 +60,21 @@ function cmisro_admin_form()
  */
 function cmisro_admin_form_validate($form, &$form_state)
 {
-	// Make sure we can get back the media sizes
-	$url = $form_state['values']['cmisro_url'];
-	$response = drupal_http_request($url);
-	$data = json_decode($response->data);
-	if (!count($data)) {
-		form_set_error('cmisro_url', 'Cannot connect to CMIS server.  Make sure the URL is valid.');
+	if (   !empty($form_state['values']['cmisro_url'])
+		&& !empty($form_state['values']['cmisro_username'])
+		&& !empty($form_state['values']['cmisro_password'])
+		&& !empty($form_state['values']['cmisro_repositoryId'])) {
+		try {
+			$service = new CMISService(
+				$form_state['values']['cmisro_url'],
+				$form_state['values']['cmisro_username'],
+				$form_state['values']['cmisro_password'],
+				$form_state['values']['cmisro_repositoryId']
+			);
+		}
+		catch (Exception $e) {
+			form_set_error('cmisro_url', 'Cannot connect to CMIS server.  Make sure the URL is valid.');
+		}
 	}
 }
 
@@ -109,6 +127,34 @@ function cmisro_field_widget_form(&$form, &$form_state, &$field, &$instance, &$l
 	return $element;
 }
 
+/**
+ * Validate user's CMIS reference
+ *
+ * Users can enter a CMIS reference in various ways:
+ * id:       22
+ * path:       530778b93e0bf
+ * query: http://localhost/media-manager/media/view?media_id=3
+ *
+ * @implements hook_field_validate()
+ */
+function cmisro_field_validate($entity_type, $entity, $field, $instance, $lang, &$items, &$errors)
+{
+	foreach ($items as $delta=>$item) {
+		if (!empty($item['reference'])) {
+			$getter = '_cmisro_get'.ucfirst(_cmisro_referenceType($item['reference']));
+			try {
+				$o = $getter($item['reference']);
+			}
+			catch (Exception $e) {
+				$errors[$field['field_name']][$lang][$delta][] = [
+					'error'   => 'unknownAttachment',
+					'message' => "$instance[label]: {$e->getMessage()}"
+				];
+			}
+		}
+	}
+}
+
 function cmisro_field_is_empty($item, $field)
 {
 	if ($field['type'] == 'cmisro') {
@@ -131,14 +177,24 @@ function cmisro_field_formatter_view($entity_type, $entity, $field, $instance, $
 	$element = [];
 	switch ($display['type']) {
 		case 'cmisro_formatter':
-			foreach ($items as $delta => $item) {
 				// Look up the item reference in the CMIS server
-				$value = $item['reference'];
+				#$value = $item['reference'];
+			foreach ($items as $delta => $item) {
+				$type   = _cmisro_referenceType($item['reference']);
+				$getter = '_cmisro_get'.ucfirst($type);
 
-				$element[$delta] = [
-					'#value' => theme('cmisro_reference', ['reference' => $value])
-				];
-			}
+				try {
+					$element[$delta] = [
+						'#markup' => theme("cmisro_$type", [$type => $getter($item['reference'])])
+					];
+				}
+				catch (Exception $e) {
+					// The item references should have already been checked when the user
+					// originally saved them in the content.
+					// If there's a problem with one of them at display-time,
+					// we can just ignore it.
+				}
+ 			}
 		break;
 	}
 	return $element;
@@ -147,10 +203,65 @@ function cmisro_field_formatter_view($entity_type, $entity, $field, $instance, $
 function cmisro_theme($existing, $type, $theme, $path)
 {
 	return [
-		'cmisro_list' => [
-			'variables' => ['reference' => null],
+		'cmisro_folder' => [
+			'variables' => ['folder' => null],
 			'template'  => 'cmisro-list',
-			'path'      => __DIR__.'/templates',
+			'path'      => drupal_get_path('module', 'cmisro') . '/templates',
+		],
+		'cmisro_object' => [
+			'variables' => ['CMISObject' => null],
+			'template'  => 'cmisro-item',
+			'path'      => drupal_get_path('module', 'cmisro') . '/templates'
+		],
+		'cmisro_query' => [
+			'variables' => ['query' => null],
+			'template'  => 'cmisro-list',
+			'path'      => drupal_get_path('module', 'cmisro') . '/templates'
 		]
 	];
 }
+
+/**
+ * @return CMISService
+ */
+function _cmisro_service()
+{
+	static $service;
+	if (!$service) {
+		$service = new CMISService(
+			variable_get('cmisro_url'),
+			variable_get('cmisro_username'),
+			variable_get('cmisro_password'),
+			variable_get('cmisro_repositoryId')
+		);
+		$service->succinct = true;
+	}
+	return $service;
+}
+
+/**
+ * Determines what kind of reference the user is wanting to make
+ *
+ * Users can reference a folder, an object, or provide a raw CMIS query.
+ * This function determines what kind of reference the user is making
+ * by looking at the string they provided
+ *
+ * @param string $reference
+ * @return string
+ */
+function _cmisro_referenceType($reference)
+{
+	if (substr($reference, 0, 1) == '/') {
+		return 'folder';
+	}
+	elseif (substr($reference, 0, 6) == 'select') {
+		return 'query';
+	}
+	else {
+		return 'object';
+	}
+}
+
+function _cmisro_getFolder($path)  { return _cmisro_service()->getChildrenByPath($path); }
+function _cmisro_getObject($id)    { return _cmisro_service()->getObject($id); }
+function _cmisro_getQuery ($query) { return _cmisro_service()->query($query); }
