@@ -8,7 +8,15 @@
 ?>
 <div class="cmisro">
 	<h2>CMISRO List</h2>
+	<ul>
 	<?php
-		print_r($variables['folder']);
+		global $base_url;
+		$download = "$base_url/cmisro/download";
+
+		foreach ($variables['folder'] as $i=>$item) {
+			$class = _cmisro_class_for_type($item['type']);
+			echo "<li><a href=\"$download/$item[id]\"><i class=\"$class\"></i>$item[title]</a></li>";
+		}
 	?>
+	</ul>
 </div>

@@ -88,6 +88,10 @@ function cmisro_menu()
 			'page arguments'  => ['cmisro_admin_form'],
 			'access arguments'=> ['administer site configuration'],
 			'type'            => MENU_NORMAL_ITEM
+		],
+		'cmisro/download' => [
+			'page callback'    => '_cmisro_download',
+			'access arguments' => ['access content']
 		]
 	];
 }
@@ -131,9 +135,9 @@ function cmisro_field_widget_form(&$form, &$form_state, &$field, &$instance, &$l
  * Validate user's CMIS reference
  *
  * Users can enter a CMIS reference in various ways:
- * id:       22
- * path:       530778b93e0bf
- * query: http://localhost/media-manager/media/view?media_id=3
+ * id:    753026c2-1d1e-40df-bf5b-847f5d23c1df
+ * path:  /Sites/bloomington-arts-commission/documentLibrary/Agendas
+ * query: select id from cmis:document where ...
  *
  * @implements hook_field_validate()
  */
@@ -246,6 +250,10 @@ function _cmisro_service()
  * This function determines what kind of reference the user is making
  * by looking at the string they provided
  *
+ * folder: /Sites/bloomington-arts-commission/documentLibrary/Agendas
+ * query:  select id from cmis:document where ...
+ * object: 753026c2-1d1e-40df-bf5b-847f5d23c1df
+ *
  * @param string $reference
  * @return string
  */
@@ -262,6 +270,76 @@ function _cmisro_referenceType($reference)
 	}
 }
 
-function _cmisro_getFolder($path)  { return _cmisro_service()->getChildrenByPath($path); }
+/**
+ * @return array
+ */
+function _cmisro_getFolder($path, $documents_only=true)
+{
+	static $ignore = ['.DS_Store'];
+
+	$output = [];
+	$list = _cmisro_service()->getChildrenByPath($path);
+	foreach ($list->objects as $item) {
+		$p = &$item->object->succinctProperties;
+
+		if ($documents_only && $p->{'cmis:baseTypeId'} == 'cmis:folder') { continue; }
+
+		// Alfresco likes to put versionNumbers into the objectId, instead of
+		// only declaring a cmis:versionSeriesId
+		$id = !empty($p->{'cmis:versionSeriesId'})
+			? $p->{'cmis:versionSeriesId'}
+			: $p->{'cmis:objectId'};
+
+		$type = isset($p->{'cmis:contentStreamMimeType'})
+			? $p->{'cmis:contentStreamMimeType'}
+			: $p->{'cmis:baseTypeId'};
+
+		if (   isset($p->{'cm:title'}[0])) {
+			$title = $p->{'cm:title'}[0];
+		}
+		else {
+			$title =  $p->{'cmis:name'};
+		}
+		if (in_array($title, $ignore)) { continue; }
+
+		$title = check_plain($title);
+		$output[] = ['type'=>$type, 'title'=>$title, 'id'=>$id];
+	}
+	return $output;
+}
 function _cmisro_getObject($id)    { return _cmisro_service()->getObject($id); }
 function _cmisro_getQuery ($query) { return _cmisro_service()->query($query); }
+
+/**
+ * Returns the FontAwesome class to use for a given cmis:type
+ *
+ * @return string
+ */
+function _cmisro_class_for_type($type) {
+	static $lookup = [
+		'cmis:folder'=>'fa fa-folder',
+		'application/octet-stream' => 'fa fa-file',
+		'image/png' => 'fa fa-image',
+		'image/jpg' => 'fa fa-image'
+	];
+	return array_key_exists($type, $lookup) ? $lookup[$type] : $type;
+}
+
+/**
+ * Streams the document file to the browser
+ *
+ * @param string $objectId The CMIS object ID
+ */
+function _cmisro_download($objectId=null)
+{
+	if ($objectId) {
+		$o = _cmisro_getObject($objectId);
+
+		drupal_add_http_header('Cache-Control', 'no-cache, must-revalidate');
+		drupal_add_http_header('Content-Type',   $o->get('cmis:contentStreamMimeType'));
+		drupal_add_http_header('Content-Length', $o->get('cmis:contentStreamLength'));
+		drupal_add_http_header('Content-Disposition', 'attachment; filename="'. $o->get('cmis:name') .'"');
+		echo _cmisro_service()->getContentStream($objectId);
+		exit();
+	}
+}
