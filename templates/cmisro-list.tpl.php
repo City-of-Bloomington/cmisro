@@ -15,7 +15,8 @@
 
 		foreach ($variables['folder'] as $i=>$item) {
 			$class = _cmisro_class_for_type($item['type']);
-			echo "<li><a href=\"$download/$item[id]\"><i class=\"$class\"></i>$item[title]</a></li>";
+			$title = check_plain($item['title']);
+			echo "<li><a href=\"$download/$item[id]\"><i class=\"$class\"></i>$title</a></li>";
 		}
 	?>
 	</ul>

@@ -271,6 +271,32 @@ function _cmisro_referenceType($reference)
 }
 
 /**
+ * Parses CMIS object response and returns a data object
+ *
+ * This function provides a simpler data representation than what
+ * comes from the CMIS server.  It also handles dealing with variations
+ * in what fields contain data we're interested in.
+ *
+ * @param stdClass $json A single object from the CMIS response
+ * @return array
+ */
+function _cmisro_object($json)
+{
+	$p = &$json->succinctProperties;
+
+	$o = [];
+	// Alfresco likes to put versionNumbers into the objectId, instead of
+	// only declaring a cmis:versionSeriesId
+	$o['id']       = !empty($p->{'cmis:versionSeriesId'})       ? $p->{'cmis:versionSeriesId'}       : $p->{'cmis:objectId'};
+	$o['type']     =  isset($p->{'cmis:contentStreamMimeType'}) ? $p->{'cmis:contentStreamMimeType'} : $p->{'cmis:baseTypeId'};
+	$o['title']    =  isset($p->{'cm:title'}[0])                ? $p->{'cm:title'}[0]                : $p->{'cmis:name'};
+	$o['filename'] = $p->{'cmis:name'};
+	$o['filesize'] = $p->{'cmis:contentStreamLength'};
+
+	return $o;
+}
+
+/**
  * @return array
  */
 function _cmisro_getFolder($path, $documents_only=true)
@@ -283,31 +309,16 @@ function _cmisro_getFolder($path, $documents_only=true)
 		$p = &$item->object->succinctProperties;
 
 		if ($documents_only && $p->{'cmis:baseTypeId'} == 'cmis:folder') { continue; }
+		$o = _cmisro_object($item->object);
 
-		// Alfresco likes to put versionNumbers into the objectId, instead of
-		// only declaring a cmis:versionSeriesId
-		$id = !empty($p->{'cmis:versionSeriesId'})
-			? $p->{'cmis:versionSeriesId'}
-			: $p->{'cmis:objectId'};
+		if (in_array($o['title'], $ignore)) { continue; }
 
-		$type = isset($p->{'cmis:contentStreamMimeType'})
-			? $p->{'cmis:contentStreamMimeType'}
-			: $p->{'cmis:baseTypeId'};
-
-		if (   isset($p->{'cm:title'}[0])) {
-			$title = $p->{'cm:title'}[0];
-		}
-		else {
-			$title =  $p->{'cmis:name'};
-		}
-		if (in_array($title, $ignore)) { continue; }
-
-		$title = check_plain($title);
-		$output[] = ['type'=>$type, 'title'=>$title, 'id'=>$id];
+		$output[] = $o;
 	}
 	return $output;
 }
-function _cmisro_getObject($id)    { return _cmisro_service()->getObject($id); }
+
+function _cmisro_getObject($id)    { return _cmisro_object(_cmisro_service()->getObject($id)); }
 function _cmisro_getQuery ($query) { return _cmisro_service()->query($query); }
 
 /**
@@ -336,9 +347,9 @@ function _cmisro_download($objectId=null)
 		$o = _cmisro_getObject($objectId);
 
 		drupal_add_http_header('Cache-Control', 'no-cache, must-revalidate');
-		drupal_add_http_header('Content-Type',   $o->get('cmis:contentStreamMimeType'));
-		drupal_add_http_header('Content-Length', $o->get('cmis:contentStreamLength'));
-		drupal_add_http_header('Content-Disposition', 'attachment; filename="'. $o->get('cmis:name') .'"');
+		drupal_add_http_header('Content-Type',   $o['type']);
+		drupal_add_http_header('Content-Length', $o['filesize']);
+		drupal_add_http_header('Content-Disposition', "attachment; filename=\"$o[filename]\"");
 		echo _cmisro_service()->getContentStream($objectId);
 		exit();
 	}
