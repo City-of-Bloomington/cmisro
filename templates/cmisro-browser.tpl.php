@@ -16,7 +16,6 @@
         $ignore = ['.DS_Store'];
 
         if (isset   ($variables['listing']->objects)) {
-            echo "Found ".count($variables['listing']->objects)." objects\n";
             foreach ($variables['listing']->objects as $item) {
                 $o = _cmisro_object($item->object);
 

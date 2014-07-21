@@ -249,9 +249,13 @@ function _cmisro_service()
 			variable_get('cmisro_password'),
 			variable_get('cmisro_repositoryId')
 		);
-		#$service->succinct = true;
+		$service->succinct = true;
 	}
 	return $service;
+}
+
+function _cmisro_pager(CMISService $service)
+{
 }
 
 /**
@@ -293,8 +297,8 @@ function _cmisro_referenceType($reference)
  */
 function _cmisro_object($json)
 {
-	#$p = &$json->succinctProperties;
-	$p = &$json->properties;
+    $p = &$json->succinctProperties;
+	#$p = &$json->properties;
 
 	$o = [];
 
@@ -313,17 +317,6 @@ function _cmisro_object($json)
 			$o['filesize'] = $p->{'cmis:contentStreamLength'};
 		}
 	}
-	else {
-		$o['id']       = $p->{'cmis:objectId'}->value;
-		$o['type']     = isset($p->{'cmis:contentStreamMimeType'}) ? $p->{'cmis:contentStreamMimeType'}->value : $p->{'cmis:baseTypeId'}->value;
-        $o['title']    = isset($p->{'cm:title'})
-                    ? is_array($p->{'cm:title'}->value) ? $p->{'cm:title'}->value[0] : $p->{'cm:title'}->value
-                    : $p->{'cmis:name'}->value;
-        $o['filename'] = $p->{'cmis:name'}->value;
-		if (!empty($p->{'cmis:contentStreamLength'})) {
-			$o['filesize'] = $p->{'cmis:contentStreamLength'}->value;
-		}
-	}
 
 	return $o;
 }
@@ -334,24 +327,18 @@ function _cmisro_object($json)
  * You can specify a path, objectId, or query to generate the listing
  *
  * @param string $reference (path|objectId|query)
+ * @param int $offset Results to skip because of paging
  * @return array
  */
-function _cmisro_getFolder($reference, $documents_only=true)
+function _cmisro_getFolder($reference, $offset=0)
 {
 	$list = [];
+	$s = _cmisro_service();
 
 	switch (_cmisro_referenceType($reference)) {
-		case 'folder':
-			$list = _cmisro_service()->getChildrenByPath($reference);
-			break;
-
-		case 'object':
-			$list = _cmisro_service()->getChildren($reference);
-			break;
-
-		case 'query':
-			$list = _cmisro_service()->query($reference);
-			break;
+		case 'folder': $list = $s->getChildrenByPath($reference, $offset); break;
+		case 'object': $list = $s->getChildren      ($reference, $offset); break;
+		case 'query' : $list = $s->query            ($reference, $offset); break;
 	}
 	return $list;
 }
@@ -377,12 +364,26 @@ function _cmisro_class_for_type($type) {
 /**
  * Displays the contents of any given folder on the CMIS Server
  *
+ * @param string $reference The folder's path or objectId
  */
 function _cmisro_browser($reference=null)
 {
 	if (empty($reference)) { $reference = '/'; }
 
-	return theme('cmisro_browser', ['listing' => _cmisro_getFolder($reference, false)]);
+	$service = _cmisro_service();
+
+    $page = pager_find_page();
+    $offset = $service->maxItems * $page;
+
+    $listing = _cmisro_getFolder($reference, $offset);
+
+    $output = theme('cmisro_browser', ['listing' => $listing]);
+
+    if ($listing->hasMoreItems) {
+        pager_default_initialize($listing->numItems, $service->maxItems);
+        $output.= theme('pager');
+    }
+    return $output;
 }
 
 /**
