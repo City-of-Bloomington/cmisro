@@ -92,6 +92,12 @@ function cmisro_menu()
 		'cmisro/download' => [
 			'page callback'    => '_cmisro_download',
 			'access arguments' => ['access content']
+		],
+		'cmisro/browser/%' => [
+			'page callback'    => '_cmisro_browser',
+			'page arguments'   => [1],
+			'access callback'  => 'user_access',
+			'access arguments' => ['access content'],
 		]
 	];
 }
@@ -207,10 +213,15 @@ function cmisro_field_formatter_view($entity_type, $entity, $field, $instance, $
 function cmisro_theme($existing, $type, $theme, $path)
 {
 	return [
+		'cmisro_browser' => [
+			'variables' => ['listing' => null],
+			'template'  => 'cmisro-browser',
+			'path'      => drupal_get_path('module', 'cmisro'). '/templates'
+		],
 		'cmisro_folder' => [
 			'variables' => ['folder' => null],
 			'template'  => 'cmisro-list',
-			'path'      => drupal_get_path('module', 'cmisro') . '/templates',
+			'path'      => drupal_get_path('module', 'cmisro') . '/templates'
 		],
 		'cmisro_object' => [
 			'variables' => ['CMISObject' => null],
@@ -238,7 +249,7 @@ function _cmisro_service()
 			variable_get('cmisro_password'),
 			variable_get('cmisro_repositoryId')
 		);
-		$service->succinct = true;
+		#$service->succinct = true;
 	}
 	return $service;
 }
@@ -282,40 +293,67 @@ function _cmisro_referenceType($reference)
  */
 function _cmisro_object($json)
 {
-	$p = &$json->succinctProperties;
+	#$p = &$json->succinctProperties;
+	$p = &$json->properties;
 
 	$o = [];
-	// Alfresco likes to put versionNumbers into the objectId, instead of
-	// only declaring a cmis:versionSeriesId
-	$o['id']       = !empty($p->{'cmis:versionSeriesId'})       ? $p->{'cmis:versionSeriesId'}       : $p->{'cmis:objectId'};
-	$o['type']     =  isset($p->{'cmis:contentStreamMimeType'}) ? $p->{'cmis:contentStreamMimeType'} : $p->{'cmis:baseTypeId'};
-	$o['title']    =  isset($p->{'cm:title'}[0])                ? $p->{'cm:title'}[0]                : $p->{'cmis:name'};
-	$o['filename'] = $p->{'cmis:name'};
-	$o['filesize'] = $p->{'cmis:contentStreamLength'};
+
+	if (!empty($json->succinctProperties)) {
+		// Alfresco likes to put versionNumbers into the objectId, instead of
+		// only declaring a cmis:versionSeriesId
+		$o['id']       = !empty($p->{'cmis:versionSeriesId'})       ? $p->{'cmis:versionSeriesId'}       : $p->{'cmis:objectId'};
+		$o['type']     =  isset($p->{'cmis:contentStreamMimeType'}) ? $p->{'cmis:contentStreamMimeType'} : $p->{'cmis:baseTypeId'};
+
+		$o['title'] =    isset($p->{'cm:title'})
+                    ? is_array($p->{'cm:title'}) ? $p->{'cm:title'}[0] : $p->{'cm:title'}
+                    : $p->{'cmis:name'};
+
+		$o['filename'] = $p->{'cmis:name'};
+		if (!empty($p->{'cmis:contentStreamLength'})) {
+			$o['filesize'] = $p->{'cmis:contentStreamLength'};
+		}
+	}
+	else {
+		$o['id']       = $p->{'cmis:objectId'}->value;
+		$o['type']     = isset($p->{'cmis:contentStreamMimeType'}) ? $p->{'cmis:contentStreamMimeType'}->value : $p->{'cmis:baseTypeId'}->value;
+        $o['title']    = isset($p->{'cm:title'})
+                    ? is_array($p->{'cm:title'}->value) ? $p->{'cm:title'}->value[0] : $p->{'cm:title'}->value
+                    : $p->{'cmis:name'}->value;
+        $o['filename'] = $p->{'cmis:name'}->value;
+		if (!empty($p->{'cmis:contentStreamLength'})) {
+			$o['filesize'] = $p->{'cmis:contentStreamLength'}->value;
+		}
+	}
 
 	return $o;
 }
 
 /**
+ * Gets a listing of objects from the CMIS server
+ *
+ * You can specify a path, objectId, or query to generate the listing
+ *
+ * @param string $reference (path|objectId|query)
  * @return array
  */
-function _cmisro_getFolder($path, $documents_only=true)
+function _cmisro_getFolder($reference, $documents_only=true)
 {
-	static $ignore = ['.DS_Store'];
+	$list = [];
 
-	$output = [];
-	$list = _cmisro_service()->getChildrenByPath($path);
-	foreach ($list->objects as $item) {
-		$p = &$item->object->succinctProperties;
+	switch (_cmisro_referenceType($reference)) {
+		case 'folder':
+			$list = _cmisro_service()->getChildrenByPath($reference);
+			break;
 
-		if ($documents_only && $p->{'cmis:baseTypeId'} == 'cmis:folder') { continue; }
-		$o = _cmisro_object($item->object);
+		case 'object':
+			$list = _cmisro_service()->getChildren($reference);
+			break;
 
-		if (in_array($o['title'], $ignore)) { continue; }
-
-		$output[] = $o;
+		case 'query':
+			$list = _cmisro_service()->query($reference);
+			break;
 	}
-	return $output;
+	return $list;
 }
 
 function _cmisro_getObject($id)    { return _cmisro_object(_cmisro_service()->getObject($id)); }
@@ -334,6 +372,17 @@ function _cmisro_class_for_type($type) {
 		'image/jpg' => 'fa fa-image'
 	];
 	return array_key_exists($type, $lookup) ? $lookup[$type] : $type;
+}
+
+/**
+ * Displays the contents of any given folder on the CMIS Server
+ *
+ */
+function _cmisro_browser($reference=null)
+{
+	if (empty($reference)) { $reference = '/'; }
+
+	return theme('cmisro_browser', ['listing' => _cmisro_getFolder($reference, false)]);
 }
 
 /**
