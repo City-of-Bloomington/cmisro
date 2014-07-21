@@ -93,9 +93,8 @@ function cmisro_menu()
 			'page callback'    => '_cmisro_download',
 			'access arguments' => ['access content']
 		],
-		'cmisro/browser/%' => [
+		'cmisro/browser' => [
 			'page callback'    => '_cmisro_browser',
-			'page arguments'   => [1],
 			'access callback'  => 'user_access',
 			'access arguments' => ['access content'],
 		]
@@ -212,26 +211,33 @@ function cmisro_field_formatter_view($entity_type, $entity, $field, $instance, $
 
 function cmisro_theme($existing, $type, $theme, $path)
 {
+    $path = drupal_get_path('module', 'cmisro') . '/templates';
+
 	return [
 		'cmisro_browser' => [
 			'variables' => ['listing' => null],
 			'template'  => 'cmisro-browser',
-			'path'      => drupal_get_path('module', 'cmisro'). '/templates'
+			'path'      => $path
 		],
 		'cmisro_folder' => [
 			'variables' => ['folder' => null],
 			'template'  => 'cmisro-list',
-			'path'      => drupal_get_path('module', 'cmisro') . '/templates'
+			'path'      => $path
 		],
 		'cmisro_object' => [
 			'variables' => ['CMISObject' => null],
 			'template'  => 'cmisro-item',
-			'path'      => drupal_get_path('module', 'cmisro') . '/templates'
+			'path'      => $path
 		],
 		'cmisro_query' => [
 			'variables' => ['query' => null],
 			'template'  => 'cmisro-list',
-			'path'      => drupal_get_path('module', 'cmisro') . '/templates'
+			'path'      => $path
+		],
+		'cmisro_breadcrumbs' => [
+            'variables' => ['object' => null],
+            'template'  => 'cmisro-breadcrumbs',
+            'path'      => $path
 		]
 	];
 }
@@ -297,25 +303,22 @@ function _cmisro_referenceType($reference)
  */
 function _cmisro_object($json)
 {
-    $p = &$json->succinctProperties;
-	#$p = &$json->properties;
-
 	$o = [];
 
 	if (!empty($json->succinctProperties)) {
+        $p =  &$json->succinctProperties;
 		// Alfresco likes to put versionNumbers into the objectId, instead of
 		// only declaring a cmis:versionSeriesId
-		$o['id']       = !empty($p->{'cmis:versionSeriesId'})       ? $p->{'cmis:versionSeriesId'}       : $p->{'cmis:objectId'};
-		$o['type']     =  isset($p->{'cmis:contentStreamMimeType'}) ? $p->{'cmis:contentStreamMimeType'} : $p->{'cmis:baseTypeId'};
-
+		$o['id']    = !empty($p->{'cmis:versionSeriesId'})       ? $p->{'cmis:versionSeriesId'}       : $p->{'cmis:objectId'};
+		$o['type']  =  isset($p->{'cmis:contentStreamMimeType'}) ? $p->{'cmis:contentStreamMimeType'} : $p->{'cmis:baseTypeId'};
 		$o['title'] =    isset($p->{'cm:title'})
                     ? is_array($p->{'cm:title'}) ? $p->{'cm:title'}[0] : $p->{'cm:title'}
                     : $p->{'cmis:name'};
 
-		$o['filename'] = $p->{'cmis:name'};
-		if (!empty($p->{'cmis:contentStreamLength'})) {
-			$o['filesize'] = $p->{'cmis:contentStreamLength'};
-		}
+		if (!empty($p->{'cmis:contentStreamLength'})) { $o['filesize'] = $p->{'cmis:contentStreamLength'}; }
+        if (!empty($p->{'cmis:path'}))                { $o['path']     = $p->{'cmis:path'}; }
+
+        $o['filename'] = $p->{'cmis:name'};
 	}
 
 	return $o;
@@ -364,20 +367,28 @@ function _cmisro_class_for_type($type) {
 /**
  * Displays the contents of any given folder on the CMIS Server
  *
- * @param string $reference The folder's path or objectId
+ * @param string $_GET[ref] The folder's path or objectId
  */
-function _cmisro_browser($reference=null)
+function _cmisro_browser()
 {
-	if (empty($reference)) { $reference = '/'; }
+    $output = '';
+    $service = _cmisro_service();
 
-	$service = _cmisro_service();
+	$reference =  !empty($_GET['ref']) ? $_GET['ref'] : '/';
 
-    $page = pager_find_page();
-    $offset = $service->maxItems * $page;
 
+	switch (_cmisro_referenceType($reference)) {
+        case 'folder': $o = _cmisro_object($service->getObjectByPath($reference)); break;
+        case 'object': $o = _cmisro_object($service->getObject      ($reference)); break;
+	}
+	if ($o['path'] != '/') {
+        $output.= theme('cmisro_breadcrumbs', ['object'=>$o]);
+    }
+
+    $page    = pager_find_page();
+    $offset  = $service->maxItems * $page;
     $listing = _cmisro_getFolder($reference, $offset);
-
-    $output = theme('cmisro_browser', ['listing' => $listing]);
+    $output .= theme('cmisro_browser', ['listing' => $listing]);
 
     if ($listing->hasMoreItems) {
         pager_default_initialize($listing->numItems, $service->maxItems);

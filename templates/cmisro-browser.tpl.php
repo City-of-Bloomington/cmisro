@@ -23,7 +23,7 @@
 
                 $class = _cmisro_class_for_type($o['type']);
                 $title = check_plain($o['title']);
-                echo "<li><a href=\"$url/$o[id]\"><i class=\"$class\"></i>$title</a></li>";
+                echo "<li><a href=\"$url?ref=$o[id]\"><i class=\"$class\"></i>$title</a></li>";
             }
         }
 	?>
