@@ -4,11 +4,15 @@
  * @license http://www.gnu.org/licenses/agpl.txt GNU/AGPL, see LICENSE.txt
  * @author Cliff Ingham <inghamn@bloomington.in.gov>
  * @param mixed $variables['listing']
+ * @param array $variables['current_directory']
  */
 ?>
 <div class="cmisro">
 	<h2>CMISRO Browser</h2>
-	<ul>
+	<?php
+        echo theme('cmisro_breadcrumbs', ['object'=>$variables['current_directory']]);
+	?>
+	<table>
 	<?php
 		global $base_url;
 		$url = "$base_url/cmisro/browser";
@@ -23,9 +27,19 @@
 
                 $class = _cmisro_class_for_type($o['type']);
                 $title = check_plain($o['title']);
-                echo "<li><a href=\"$url?ref=$o[id]\"><i class=\"$class\"></i>$title</a></li>";
+                echo "
+                <tr><td><a href=\"$url?ref=$o[id]\"><i class=\"$class\"></i>$title</a></td>
+                    <td></td>
+                </tr>
+                ";
             }
         }
 	?>
-	</ul>
+	</table>
+    <?php
+        if ($variables['listing']->hasMoreItems) {
+            pager_default_initialize($variables['listing']->numItems, _cmisro_service()->maxItems);
+            echo theme('pager');
+        }
+    ?>
 </div>

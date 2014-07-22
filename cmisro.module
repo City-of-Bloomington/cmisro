@@ -214,8 +214,12 @@ function cmisro_theme($existing, $type, $theme, $path)
     $path = drupal_get_path('module', 'cmisro') . '/templates';
 
 	return [
+        'cmisro_popup' => [
+            'render element' => 'page',
+            'template' => 'cmisro-popup'
+        ],
 		'cmisro_browser' => [
-			'variables' => ['listing' => null],
+			'variables' => ['current_directory' => null, 'listing' => null],
 			'template'  => 'cmisro-browser',
 			'path'      => $path
 		],
@@ -371,30 +375,25 @@ function _cmisro_class_for_type($type) {
  */
 function _cmisro_browser()
 {
-    $output = '';
     $service = _cmisro_service();
 
 	$reference =  !empty($_GET['ref']) ? $_GET['ref'] : '/';
-
 
 	switch (_cmisro_referenceType($reference)) {
         case 'folder': $o = _cmisro_object($service->getObjectByPath($reference)); break;
         case 'object': $o = _cmisro_object($service->getObject      ($reference)); break;
 	}
-	if ($o['path'] != '/') {
-        $output.= theme('cmisro_breadcrumbs', ['object'=>$o]);
-    }
 
     $page    = pager_find_page();
     $offset  = $service->maxItems * $page;
     $listing = _cmisro_getFolder($reference, $offset);
-    $output .= theme('cmisro_browser', ['listing' => $listing]);
 
-    if ($listing->hasMoreItems) {
-        pager_default_initialize($listing->numItems, $service->maxItems);
-        $output.= theme('pager');
+    if (!empty($_GET['popup'])) {
+        echo   theme('cmisro_popup',   ['current_directory'=>$o, 'listing' => $listing]);
     }
-    return $output;
+    else {
+        return theme('cmisro_browser', ['current_directory'=>$o, 'listing' => $listing]);
+    }
 }
 
 /**
