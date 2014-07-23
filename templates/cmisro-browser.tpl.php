@@ -25,11 +25,34 @@
 
                 if (in_array($o['title'], $ignore)) { continue; }
 
-                $class = _cmisro_class_for_type($o['type']);
                 $title = check_plain($o['title']);
+                // Only render links on folders
+                //
+                // This browser is written to navigate the directory structure.
+                // It makes no sense to render a link on a document.
+                //
+                // However, if this browser is being used as a popup, the user
+                // should be able to choose either a folder or a document.
+                // We should render buttons on every item.
+                $button = '';
+                if ($o['type'] == 'cmis:folder') {
+					$class = _cmisro_class_for_type($o['type']);
+
+					$params = '';
+					if (!empty($_GET['popup']) && !empty($_GET['id'])) {
+						$params = '&amp;popup=1&amp;id='.$_GET['id'];
+						$button = "
+						<button type=\"button\" onclick=\"CMISRO_BROWSER.handleSelection('$_GET[id]', '$o[id]');\">
+							Choose
+						</button>";
+					}
+
+					$title = "<a href=\"$url?ref=$o[id]$params\"><i class=\"$class\"></i>$title</a>";
+                }
+
                 echo "
-                <tr><td><a href=\"$url?ref=$o[id]\"><i class=\"$class\"></i>$title</a></td>
-                    <td></td>
+                <tr><td>$title </td>
+                    <td>$button</td>
                 </tr>
                 ";
             }

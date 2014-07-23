@@ -9,13 +9,16 @@ echo "<h2>";
 
 global $base_url;
 $url = "$base_url/cmisro/browser";
+$params = (!empty($_GET['popup']) && !empty($_GET['id']))
+	? '&amp;popup=1&amp;id='.$_GET['id']
+	: '';
 
 $fullpath = '';
 foreach (explode('/', $variables['object']['path']) as $i=>$dir) {
     # Skip the root dir
     if ($i > 0) {
         $fullpath.= "/$dir";
-        echo "<a href=\"$url?ref=$fullpath\">/$dir</a>";
+        echo "<a href=\"$url?ref=$fullpath$params\">/$dir</a>";
     }
 }
 echo "</h2>";
