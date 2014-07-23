@@ -20,7 +20,6 @@
         $ignore = ['.DS_Store'];
 
         if (isset   ($variables['folder']->objects)) {
-            echo "Found ".count($variables['folder']->objects)." objects\n";
             foreach ($variables['folder']->objects as $item) {
                 $o = _cmisro_object($item->object);
 
@@ -29,7 +28,7 @@
 
                 $class = _cmisro_class_for_type($o['type']);
                 $title = check_plain($o['title']);
-                echo "<li><a href=\"$download/$o[id]\"><i class=\"$class\"></i>$title</a></li>";
+                echo "<li><a href=\"$download/$o[id]\" class=\"cmis_object $class\">$title</a></li>";
             }
         }
 	?>

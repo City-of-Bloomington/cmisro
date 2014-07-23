@@ -390,7 +390,6 @@ function _cmisro_browser()
     $offset  = $service->maxItems * $page;
     $listing = _cmisro_getFolder($reference, $offset);
 
-    drupal_add_css(drupal_get_path('module', 'cmisro').'/css/cmisro.css');
     if (!empty($_GET['popup'])) {
         echo   theme('cmisro_popup',   ['current_directory'=>$o, 'listing' => $listing]);
     }

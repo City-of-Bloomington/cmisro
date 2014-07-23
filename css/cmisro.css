@@ -1,6 +1,8 @@
 .cmisro table, .cmisro td { border:none; }
+.cmisro ul { list-style-type:none; padding:0; margin:0; }
+.cmisro li { list-style-type:none; margin:0; }
 
-td.cmis_object {
+.cmis_object {
 	height:16px; padding-left:20px;
 	background-repeat:no-repeat; background-position:center left;
 }

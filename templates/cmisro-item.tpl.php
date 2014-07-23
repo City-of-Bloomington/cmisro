@@ -11,10 +11,10 @@
 	<?php
 		global $base_url;
 		$download = "$base_url/cmisro/download";
-		
+
 		$item = &$variables['object'];
 		$class = _cmisro_class_for_type($item['type']);
 		$title = check_plain($item['title']);
-		echo "<a href=\"$download/$item[id]\"><i class=\"$class\"></i>$item[title]</a>";
+		echo "<a href=\"$download/$item[id]\" class=\"cmis_object $class\">$item[title]</a>";
 	?>
 </div>
