@@ -35,20 +35,20 @@
                 // However, if this browser is being used as a popup, the user
                 // should be able to choose either a folder or a document.
                 // We should render buttons on every item.
-                $button = '';
                 if ($o['type'] == 'cmis:folder') {
 
 					$params = '';
 					if (!empty($_GET['popup']) && !empty($_GET['id'])) {
 						$params = '&amp;popup=1&amp;id='.$_GET['id'];
-						$button = "
-						<button type=\"button\" onclick=\"CMISRO_BROWSER.handleSelection('$_GET[id]', '$o[id]');\">
-							Choose
-						</button>";
 					}
 
 					$title = "<a href=\"$url?ref=$o[id]$params\">$title</a>";
                 }
+                
+				$button = "
+				<button type=\"button\" onclick=\"CMISRO_BROWSER.handleSelection('$_GET[id]', '$o[id]');\">
+					Choose
+				</button>";
 
                 echo "
                 <tr><td class=\"cmis_object $class\">$title</td>
