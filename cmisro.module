@@ -362,10 +362,10 @@ function _cmisro_getQuery ($query) { return _cmisro_service()->query($query); }
  */
 function _cmisro_class_for_type($type) {
 	static $lookup = [
-		'cmis:folder'=>'fa fa-folder',
+		'cmis:folder'=>'folder',
 		'application/octet-stream' => 'fa fa-file',
-		'image/png' => 'fa fa-image',
-		'image/jpg' => 'fa fa-image'
+		'image/png' => 'image',
+		'image/jpg' => 'image'
 	];
 	return array_key_exists($type, $lookup) ? $lookup[$type] : $type;
 }
@@ -390,6 +390,7 @@ function _cmisro_browser()
     $offset  = $service->maxItems * $page;
     $listing = _cmisro_getFolder($reference, $offset);
 
+    drupal_add_css(drupal_get_path('module', 'cmisro').'/css/cmisro.css');
     if (!empty($_GET['popup'])) {
         echo   theme('cmisro_popup',   ['current_directory'=>$o, 'listing' => $listing]);
     }

@@ -1,0 +1,10 @@
+.cmisro table, .cmisro td { border:none; }
+
+td.cmis_object {
+	height:16px; padding-left:20px;
+	background-repeat:no-repeat; background-position:center left;
+}
+
+/* Custom Icons for mime types */
+.folder { background-image: url('icons/folder.png'); }
+.image  { background-image: url('icons/image.png' ); }

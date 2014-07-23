@@ -26,6 +26,7 @@
                 if (in_array($o['title'], $ignore)) { continue; }
 
                 $title = check_plain($o['title']);
+				$class = _cmisro_class_for_type($o['type']);
                 // Only render links on folders
                 //
                 // This browser is written to navigate the directory structure.
@@ -36,7 +37,6 @@
                 // We should render buttons on every item.
                 $button = '';
                 if ($o['type'] == 'cmis:folder') {
-					$class = _cmisro_class_for_type($o['type']);
 
 					$params = '';
 					if (!empty($_GET['popup']) && !empty($_GET['id'])) {
@@ -47,11 +47,11 @@
 						</button>";
 					}
 
-					$title = "<a href=\"$url?ref=$o[id]$params\"><i class=\"$class\"></i>$title</a>";
+					$title = "<a href=\"$url?ref=$o[id]$params\">$title</a>";
                 }
 
                 echo "
-                <tr><td>$title </td>
+                <tr><td class=\"cmis_object $class\">$title</td>
                     <td>$button</td>
                 </tr>
                 ";
