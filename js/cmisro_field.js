@@ -6,6 +6,12 @@
 		 *
 		 * This button should open a new window to the cmisro/browser
 		 * The user will browse and choose a file to attach.
+		 *
+		 * When the user chooses a file to attach, they will click a button
+		 * that calls CMISRO.handleSelection().  That function will update
+		 * the input with the new objectId
+		 *
+		 * @see cmisro_browser.js
 		 */
 		attach: function (context, settings) {
 			$('.field-widget-cmisro-chooser .form-item .form-text').after(function () {

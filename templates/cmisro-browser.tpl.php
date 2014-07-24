@@ -8,7 +8,6 @@
  */
 ?>
 <div class="cmisro">
-	<h2>CMISRO Browser</h2>
 	<?php
         echo theme('cmisro_breadcrumbs', ['object'=>$variables['current_directory']]);
 	?>
@@ -44,11 +43,12 @@
 
 					$title = "<a href=\"$url?ref=$o[id]$params\">$title</a>";
                 }
-                
+
 				$button = "
 				<button type=\"button\" onclick=\"CMISRO_BROWSER.handleSelection('$_GET[id]', '$o[id]');\">
 					Choose
-				</button>";
+				</button>
+				";
 
                 echo "
                 <tr><td class=\"cmis_object $class\">$title</td>
