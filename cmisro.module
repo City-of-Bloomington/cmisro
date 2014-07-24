@@ -317,9 +317,13 @@ function _cmisro_object($json)
 		// only declaring a cmis:versionSeriesId
 		$o['id']    = !empty($p->{'cmis:versionSeriesId'})       ? $p->{'cmis:versionSeriesId'}       : $p->{'cmis:objectId'};
 		$o['type']  =  isset($p->{'cmis:contentStreamMimeType'}) ? $p->{'cmis:contentStreamMimeType'} : $p->{'cmis:baseTypeId'};
-		$o['title'] =    isset($p->{'cm:title'})
-                    ? is_array($p->{'cm:title'}) ? $p->{'cm:title'}[0] : $p->{'cm:title'}
-                    : $p->{'cmis:name'};
+
+		if (!empty($p->{'cm:title'})) {
+			$o['title'] = is_array($p->{'cm:title'}) ? $p->{'cm:title'}[0] : $p->{'cm:title'};
+		}
+		if (empty($o['title']) && !empty($p->{'cmis:name'})) {
+			$o['title'] = $p->{'cmis:name'};
+		}
 
 		if (!empty($p->{'cmis:contentStreamLength'})) { $o['filesize'] = $p->{'cmis:contentStreamLength'}; }
         if (!empty($p->{'cmis:path'}))                { $o['path']     = $p->{'cmis:path'}; }
