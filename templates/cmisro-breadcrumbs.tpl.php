@@ -14,11 +14,24 @@ $params = (!empty($_GET['popup']) && !empty($_GET['id']))
 	: '';
 
 $fullpath = '';
-foreach (explode('/', $variables['object']['path']) as $i=>$dir) {
+$path  = explode('/', $variables['object']['path']);
+$count = count($path);
+foreach ($path as $i=>$dir) {
     # Skip the root dir
     if ($i > 0) {
         $fullpath.= "/$dir";
         echo "<a href=\"$url?ref=$fullpath$params\">/$dir</a>";
     }
+    if ($i == ($count - 2)) {
+		$back = $fullpath ? $fullpath : '/';
+    }
 }
 echo "</h2>";
+
+if ($variables['object']['path'] != '/') {
+	echo "
+	<div class=\"cmis_object folder\">
+		<a href=\"$url?ref=$back$params\">Parent Folder</a>
+	</div>
+	";
+}
