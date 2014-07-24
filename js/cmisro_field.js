@@ -15,7 +15,7 @@
 						window.open(
 							Drupal.settings.basePath + 'cmisro/browser?popup=1&id=' + id,
 							'browser',
-							'width=700,height=480'
+							'width=700,height=480, resizeable=yes,scrollbars=yes'
 						);
 					};
 

@@ -1,3 +1,5 @@
+body > div.cmisro { margin:4px; }
+
 .cmisro table, .cmisro td { border:none; }
 .cmisro ul { list-style-type:none; padding:0; margin:0; }
 .cmisro li { list-style-type:none; margin:0; }
