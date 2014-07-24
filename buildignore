@@ -1,0 +1,6 @@
+/buildignore
+/build.sh
+/build
+/dist
+.git/
+.git*
