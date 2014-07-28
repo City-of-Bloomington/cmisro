@@ -266,10 +266,6 @@ function _cmisro_service()
 	return $service;
 }
 
-function _cmisro_pager(CMISService $service)
-{
-}
-
 /**
  * Determines what kind of reference the user is wanting to make
  *
