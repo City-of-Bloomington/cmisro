@@ -41,13 +41,6 @@ function cmisro_chemistry_version_check()
 function cmisro_admin_form()
 {
 	return system_settings_form([
-		'cmisro_repositoryId' => [
-			'#type'          => 'textfield',
-			'#default_value' => variable_get('cmisro_repositoryId'),
-			'#title'         => 'CMIS Repository ID',
-			'#description'   => 'The ID of your CMIS repository.',
-			'#required'      => true
-		],
 		'cmisro_url' => [
 			'#type'          => 'textfield',
 			'#default_value' => variable_get('cmisro_url'),
@@ -55,6 +48,13 @@ function cmisro_admin_form()
 			'#description'   => 'Your CMIS 1.1 browser binding repository URL.  This should be the URL to the JSON interface',
 			'#required'      => true
 		],
+        'cmisro_repositoryId' => [
+            '#type'          => 'textfield',
+            '#default_value' => variable_get('cmisro_repositoryId'),
+            '#title'         => 'CMIS Repository ID',
+            '#description'   => 'The ID of your CMIS repository.',
+            '#required'      => true
+        ],
 		'cmisro_username' => [
 			'#type'          => 'textfield',
 			'#default_value' => variable_get('cmisro_username'),
@@ -126,7 +126,7 @@ function cmisro_menu()
 function cmisro_field_info()
 {
 	return [
-		'cmisro' => [
+		'cmisro_reference' => [
 			'label'             => 'CMIS Reference',
 			'description'       => 'A reference to one or more documents in the CMIS server',
 			'default_widget'    => 'cmisro_chooser',
@@ -140,7 +140,7 @@ function cmisro_field_widget_info()
 	return [
 		'cmisro_chooser' => [
 			'label'       => 'CMIS Reference',
-			'field types' => ['cmisro']
+			'field types' => ['cmisro_reference']
 		]
 	];
 }
@@ -190,7 +190,7 @@ function cmisro_field_validate($entity_type, $entity, $field, $instance, $lang, 
 
 function cmisro_field_is_empty($item, $field)
 {
-	if ($field['type'] == 'cmisro') {
+	if ($field['type'] == 'cmisro_reference') {
 		return empty($item['reference']);
 	}
 }
@@ -200,7 +200,7 @@ function cmisro_field_formatter_info()
 	return [
 		'cmisro_formatter' => [
 			'label'       => t('Default'),
-			'field types' => ['cmisro']
+			'field types' => ['cmisro_reference']
 		]
 	];
 }
@@ -253,7 +253,7 @@ function cmisro_theme($existing, $type, $theme, $path)
 			'path'      => $path
 		],
 		'cmisro_object' => [
-			'variables' => ['CMISObject' => null],
+			'variables' => ['object' => null],
 			'template'  => 'cmisro-item',
 			'path'      => $path
 		],
@@ -278,7 +278,7 @@ function _cmisro_service()
 	static $service;
 	if (!$service) {
         libraries_load('chemistry');
-        
+
 		$service = new CMISService(
 			variable_get('cmisro_url'),
 			variable_get('cmisro_username'),
