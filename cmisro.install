@@ -24,11 +24,14 @@ function cmisro_install()
 function cmisro_uninstall()
 {
 	variable_del('cmisro_url');
+	variable_del('cmisro_repositoryId');
+	variable_del('cmisro_username');
+	variable_del('cmisro_password');
 }
 
 function cmisro_field_schema($field)
 {
-	if ($field['type'] == 'cmisro') {
+	if ($field['type'] == 'cmisro_reference') {
 		return [
 			'columns'=>[
 				'reference' => [
