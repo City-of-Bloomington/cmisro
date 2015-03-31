@@ -1,3 +1,0 @@
-[submodule "library/chemistry-phpclient"]
-	path = library/chemistry-phpclient
-	url = https://github.com/City-of-Bloomington/chemistry-phpclient.git

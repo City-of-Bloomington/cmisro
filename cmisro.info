@@ -2,3 +2,4 @@ name = CMIS Read-Only
 core = 7.x
 stylesheets[all][] = css/cmisro.css
 dependencies[] = field_ui
+dependencies[] = libraries

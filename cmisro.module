@@ -17,7 +17,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-include __DIR__.'/library/chemistry-phpclient/browser/cmis_service.php';
+function cmisro_libraries_info()
+{
+    return ['chemistry' => [
+        'name'             => 'COB Fork of Chemistry PHP CMIS library',
+        'vendor url'       => 'http://github.com/City-of-Bloomington/chemistry-phpclient',
+        'download url'     => 'http://github.com/City-of-Bloomington/chemistry-phpclient',
+        'files' => [
+            'php' => [
+                'browser/cmis_service.php'
+            ]
+        ],
+        'version callback' => 'cmisro_chemistry_version_check',
+    ]];
+}
+function cmisro_chemistry_version_check()
+{
+    // Right now, we do not care about versions.
+    // Any version of the Chemistry fork from COB will do
+    return true;
+}
 
 function cmisro_admin_form()
 {
@@ -64,6 +83,9 @@ function cmisro_admin_form_validate($form, &$form_state)
 		&& !empty($form_state['values']['cmisro_username'])
 		&& !empty($form_state['values']['cmisro_password'])
 		&& !empty($form_state['values']['cmisro_repositoryId'])) {
+
+        libraries_load('chemistry');
+
 		try {
 			$service = new CMISService(
 				$form_state['values']['cmisro_url'],
@@ -255,6 +277,8 @@ function _cmisro_service()
 {
 	static $service;
 	if (!$service) {
+        libraries_load('chemistry');
+        
 		$service = new CMISService(
 			variable_get('cmisro_url'),
 			variable_get('cmisro_username'),
