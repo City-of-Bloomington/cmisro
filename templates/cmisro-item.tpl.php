@@ -5,16 +5,10 @@
  * @author Cliff Ingham <inghamn@bloomington.in.gov>
  * @param mixed $variables['object']
  */
-?>
-<div class="cmisro">
-	<h2>CMISRO Item</h2>
-	<?php
-		global $base_url;
-		$download = "$base_url/cmisro/download";
+global $base_url;
+$download = "$base_url/cmisro/download";
 
-		$item = &$variables['object'];
-		$class = _cmisro_class_for_type($item['type']);
-		$title = check_plain($item['title']);
-		echo "<a href=\"$download/$item[id]\" class=\"cmis_object $class\">$item[title]</a>";
-	?>
-</div>
+$item = &$variables['object'];
+$class = _cmisro_class_for_type($item['type']);
+$title = check_plain($item['title']);
+echo "<a href=\"$download/$item[id]\" class=\"cmis_object $class\">$item[title]</a>";

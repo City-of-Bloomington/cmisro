@@ -174,10 +174,12 @@ function cmisro_field_validate($entity_type, $entity, $field, $instance, $lang, 
 {
 	foreach ($items as $delta=>$item) {
 		if (!empty($item['reference'])) {
-			$getter = '_cmisro_get'.ucfirst(_cmisro_referenceType($item['reference']));
-			try {
-				$o = $getter($item['reference']);
-			}
+            $type = _cmisro_referenceType($item['reference']);
+            try {
+                $o = $type === 'query'
+                    ? _cmisro_getQuery ($item['reference'])
+                    : _cmisro_getObject($item['reference']);
+            }
 			catch (Exception $e) {
 				$errors[$field['field_name']][$lang][$delta][] = [
 					'error'   => 'unknownAttachment',
@@ -213,19 +215,27 @@ function cmisro_field_formatter_view($entity_type, $entity, $field, $instance, $
 				// Look up the item reference in the CMIS server
 				#$value = $item['reference'];
 			foreach ($items as $delta => $item) {
-				$type   = _cmisro_referenceType($item['reference']);
-				$getter = '_cmisro_get'.ucfirst($type);
-
-				try {
-					$element[$delta] = [
-						'#markup' => theme("cmisro_$type", [$type => $getter($item['reference'])])
-					];
+				if (_cmisro_referenceType($item['reference']) === 'query') {
+                    // TODO: need to implement queries
 				}
-				catch (Exception $e) {
-					// The item references should have already been checked when the user
-					// originally saved them in the content.
-					// If there's a problem with one of them at display-time,
-					// we can just ignore it.
+				else {
+                    try {
+                        $o = _cmisro_getObject($item['reference']);
+                        if ($o['type'] === 'cmis:folder') {
+                            $list = _cmisro_getFolder($o['id']);
+                            $html = theme('cmisro_list', ['list'=>$list, 'title'=>$o['title']]);
+                        }
+                        else {
+                            $html = theme('cmisro_item', ['object'=>$o]);
+                        }
+                        $element[$delta] = ['#markup'=>$html];
+                    }
+                    catch (\Exception $e) {
+                        // The item references should have already been checked when the user
+                        // originally saved them in the content.
+                        // If there's a problem with one of them at display-time,
+                        // we can just ignore it.
+                    }
 				}
  			}
 		break;
@@ -247,24 +257,19 @@ function cmisro_theme($existing, $type, $theme, $path)
 			'template'  => 'cmisro-browser',
 			'path'      => $path
 		],
-		'cmisro_folder' => [
-			'variables' => ['folder' => null],
-			'template'  => 'cmisro-list',
-			'path'      => $path
-		],
-		'cmisro_object' => [
-			'variables' => ['object' => null],
-			'template'  => 'cmisro-item',
-			'path'      => $path
-		],
-		'cmisro_query' => [
-			'variables' => ['query' => null],
-			'template'  => 'cmisro-list',
-			'path'      => $path
-		],
 		'cmisro_breadcrumbs' => [
             'variables' => ['object' => null],
             'template'  => 'cmisro-breadcrumbs',
+            'path'      => $path
+		],
+		'cmisro_item' => [
+            'variables' => ['object' => null],
+            'template'  => 'cmisro-item',
+            'path'      => $path
+		],
+		'cmisro_list' => [
+            'variables' => ['list' => null, 'title' => null],
+            'template'  => 'cmisro-list',
             'path'      => $path
 		]
 	];
@@ -307,13 +312,13 @@ function _cmisro_service()
 function _cmisro_referenceType($reference)
 {
 	if (substr($reference, 0, 1) == '/') {
-		return 'folder';
+		return 'path';
 	}
 	elseif (substr($reference, 0, 6) == 'select') {
 		return 'query';
 	}
 	else {
-		return 'object';
+		return 'id';
 	}
 }
 
@@ -369,15 +374,25 @@ function _cmisro_getFolder($reference, $offset=0)
 	$s = _cmisro_service();
 
 	switch (_cmisro_referenceType($reference)) {
-		case 'folder': $list = $s->getChildrenByPath($reference, $offset); break;
-		case 'object': $list = $s->getChildren      ($reference, $offset); break;
-		case 'query' : $list = $s->query            ($reference, $offset); break;
+		case 'path' : $list = $s->getChildrenByPath($reference, $offset); break;
+		case 'id'   : $list = $s->getChildren      ($reference, $offset); break;
+		case 'query': $list = $s->query            ($reference, $offset); break;
 	}
 	return $list;
 }
 
-function _cmisro_getObject($id)    { return _cmisro_object(_cmisro_service()->getObject($id)); }
+function _cmisro_getObject($reference)
+{
+    $s = _cmisro_service();
+
+    $o = _cmisro_referenceType($reference) === 'path'
+        ?  $s->getObjectByPath($reference)
+        :  $s->getObject      ($reference);
+
+    return _cmisro_object($o);
+}
 function _cmisro_getQuery ($query) { return _cmisro_service()->query($query); }
+
 
 /**
  * Returns the FontAwesome class to use for a given cmis:type
@@ -404,11 +419,7 @@ function _cmisro_browser()
     $service = _cmisro_service();
 
 	$reference =  !empty($_GET['ref']) ? $_GET['ref'] : '/';
-
-	switch (_cmisro_referenceType($reference)) {
-        case 'folder': $o = _cmisro_object($service->getObjectByPath($reference)); break;
-        case 'object': $o = _cmisro_object($service->getObject      ($reference)); break;
-	}
+	$o = _cmisro_getObject($reference);
 
     $page    = pager_find_page();
     $offset  = $service->maxItems * $page;
