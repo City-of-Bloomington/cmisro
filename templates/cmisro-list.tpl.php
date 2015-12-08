@@ -4,9 +4,8 @@
  *
  * This will only list the document objects.  Folders will be ignored.
  *
- * @copyright 2014 City of Bloomington, Indiana
+ * @copyright 2014-2015 City of Bloomington, Indiana
  * @license http://www.gnu.org/licenses/agpl.txt GNU/AGPL, see LICENSE.txt
- * @author Cliff Ingham <inghamn@bloomington.in.gov>
  * @param mixed $variables['list']
  * @param string $variables['title']
  */
