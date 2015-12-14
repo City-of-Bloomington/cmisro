@@ -17,9 +17,8 @@
 
         $ignore = ['.DS_Store'];
 
-        if (isset   ($variables['listing']->objects)) {
-            foreach ($variables['listing']->objects as $item) {
-                $o = _cmisro_object($item->object);
+        if (isset   ($variables['listing'])) {
+            foreach ($variables['listing'] as $o) {
 
                 if (in_array($o['title'], $ignore)) { continue; }
 

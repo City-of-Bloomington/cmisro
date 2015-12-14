@@ -31,15 +31,14 @@ function cmisro_uninstall()
 
 function cmisro_field_schema($field)
 {
-	if ($field['type'] == 'cmisro_reference') {
-		return [
-			'columns'=>[
-				'reference' => [
-					'type'     => 'varchar',
-					'length'   => '255',
-					'not null' => false
-				]
-			]
-		];
-	}
+    // Both our fields use the same <input name="reference" />
+    return [
+        'columns'=>[
+            'reference' => [
+                'type'     => 'varchar',
+                'length'   => '255',
+                'not null' => false
+            ]
+        ]
+    ];
 }

@@ -88,6 +88,28 @@ function _cmisro_object($json)
 }
 
 /**
+ * Cleans up results and returns simple objects from query results
+ *
+ * Iterates over results and calls _cmisro_object for each item.
+ * Then, it returns the simplified list.
+ *
+ * The full, (even succinct) result responses are way more complicated
+ * than we need for Drupal page rendering.  This function simplified
+ * the results, making it easier for template authors.
+ *
+ * @param stdClass $result JSON results
+ * @return array
+ */
+function _cmisro_result_objects($result)
+{
+    $list = [];
+    foreach ($result->objects as $row) {
+        $list[] = _cmisro_object($row->object);
+    }
+    return $list;
+}
+
+/**
  * Gets a listing of objects from the CMIS server
  *
  * You can specify a path, objectId, or query to generate the listing
@@ -96,19 +118,33 @@ function _cmisro_object($json)
  * @param int $offset Results to skip because of paging
  * @return array
  */
-function _cmisro_getFolder($reference, $offset=0)
+function _cmisro_getFolderItems($reference, $offset=0)
 {
-	$list = [];
 	$s = _cmisro_service();
 
 	switch (_cmisro_referenceType($reference)) {
-		case 'path' : $list = $s->getChildrenByPath($reference, $offset); break;
-		case 'id'   : $list = $s->getChildren      ($reference, $offset); break;
-		case 'query': $list = $s->query            ($reference, $offset); break;
+		case 'path' : $result = $s->getChildrenByPath($reference, $offset); break;
+		case 'id'   : $result = $s->getChildren      ($reference, $offset); break;
+		case 'query': $result = $s->query            ($reference, $offset); break;
 	}
+	$list = _cmisro_result_objects($result);
+
 	return $list;
 }
 
+/**
+ * @param string $folderId
+ * @return array
+ */
+function _cmisro_getSubFolders($folderId)
+{
+    $s = _cmisro_service();
+    return _cmisro_result_objects($s->getFolderTree($folderId));
+}
+
+/**
+ * @param string $reference
+ */
 function _cmisro_getObject($reference)
 {
     $s = _cmisro_service();
@@ -119,7 +155,10 @@ function _cmisro_getObject($reference)
 
     return _cmisro_object($o);
 }
-function _cmisro_getQuery ($query) { return _cmisro_service()->query($query); }
+function _cmisro_getQuery($query)
+{
+    return _cmisro_service()->query($query);
+}
 
 
 /**
@@ -138,18 +177,13 @@ function _cmisro_class_for_type($type) {
 }
 
 /**
- * Returns the Drupal url for correctly handling the document
+ * Returns the Drupal uri for correctly handling the document
  *
- * Right now, the only option is to download the document
- *.
  * @TODO implement link to interstitial page for document
  * @return string
  */
-function _cmisro_document_url($documentId)
-{
-    global $base_url;
-    return "$base_url/cmisro/download/$documentId";
-}
+function _cmisro_document_uri($documentId)   { return "cmisro/download/$documentId"; }
+function _cmisro_folder_uri($nid, $folderId) { return "cmisro/$nid/$folderId"; }
 
 /**
  * Streams the document file to the browser

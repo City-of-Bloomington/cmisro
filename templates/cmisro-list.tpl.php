@@ -20,9 +20,8 @@ $title = isset($variables['title']) ? check_plain($variables['title']) : 'Attach
 	<h2><?= $title ?></h2>
 	<ul>
 	<?php
-        if (isset   ($variables['list']->objects)) {
-            foreach ($variables['list']->objects as $item) {
-                $o = _cmisro_object($item->object);
+        if (isset   ($variables['list'])) {
+            foreach ($variables['list'] as $o) {
 
                 if ($o['type'] == 'cmis:folder')    { continue; }
                 if (in_array($o['title'], $ignore)) { continue; }

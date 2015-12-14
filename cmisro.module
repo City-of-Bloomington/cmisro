@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 include __DIR__.'/cmisro-api.php';
+include __DIR__.'/cmisro-fields.php';
 
 function cmisro_libraries_info()
 {
@@ -120,118 +121,60 @@ function cmisro_menu()
 			'page callback'    => '_cmisro_browser',
 			'access callback'  => 'user_access',
 			'access arguments' => ['access content'],
-		]
+		],
+        'cmisro/%node/%' => [
+            'title callback'   => 'cmisro_directorylisting_title',
+            'title arguments'  => [1],
+            'description'      => 'Browsable directory listing from Alfresco.',
+            'page callback'    => 'cmisro_directorylisting',
+            'page arguments'   => [1, 2],
+            'access arguments' => ['access content']
+        ],
 	];
 }
 
-function cmisro_field_info()
+function cmisro_directorylisting_title($node)
 {
-	return [
-		'cmisro_reference' => [
-			'label'             => 'CMIS Reference',
-			'description'       => 'A reference to one or more documents in the CMIS server',
-			'default_widget'    => 'cmisro_chooser',
-			'default_formatter' => 'cmisro_formatter'
-		]
-	];
-}
-
-function cmisro_field_widget_info()
-{
-	return [
-		'cmisro_chooser' => [
-			'label'       => 'CMIS Reference',
-			'field types' => ['cmisro_reference']
-		]
-	];
-}
-
-function cmisro_field_widget_form(&$form, &$form_state, &$field, &$instance, &$langcode, &$items, &$delta, &$element)
-{
-	if ($instance['widget']['type'] == 'cmisro_chooser') {
-		drupal_add_js(drupal_get_path('module', 'cmisro').'/js/cmisro_field.js');
-
-		$element['reference'] = [
-			'#type'          => 'textfield',
-            '#title'         => isset($instance['label'])        ? $instance['label']       : 'CMIS Reference',
-			'#default_value' => isset($items[$delta])            ? $items[$delta]           : null,
-            '#description'   => !empty($instance['description']) ? $instance['description'] : null
-		];
-	}
-	return $element;
+    return $node->title;
 }
 
 /**
- * Validate user's CMIS reference
- *
- * Users can enter a CMIS reference in various ways:
- * id:    753026c2-1d1e-40df-bf5b-847f5d23c1df
- * path:  /Sites/bloomington-arts-commission/documentLibrary/Agendas
- * query: select id from cmis:document where ...
- *
- * @implements hook_field_validate()
+ * @param array  $node    Current drupal page node
+ * @param string $basedir Folder ID for base direcotory
+ * @param string $subdir  Folder ID for subdirectory
  */
-function cmisro_field_validate($entity_type, $entity, $field, $instance, $lang, &$items, &$errors)
+function cmisro_directorylisting($node, $basedir, $subdir=null)
 {
-	foreach ($items as $delta=>$item) {
-		if (!empty($item['reference'])) {
-            $type = _cmisro_referenceType($item['reference']);
-            try {
-                $o = $type === 'query'
-                    ? _cmisro_getQuery ($item['reference'])
-                    : _cmisro_getObject($item['reference']);
-            }
-			catch (Exception $e) {
-				$errors[$field['field_name']][$lang][$delta][] = [
-					'error'   => 'unknownAttachment',
-					'message' => "$instance[label]: {$e->getMessage()}"
-				];
-			}
-		}
-	}
+    try {
+        $base        = _cmisro_getObject($basedir);
+        $directories = _cmisro_getSubFolders($base['id']);
+
+        if ($subdir) {
+            $sub       = _cmisro_getObject($subdir);
+            $documents = _cmisro_getFolderItems($sub['id']);
+        }
+        else {
+            $sub = null;
+            $documents = _cmisro_getFolderItems($base['id']);
+        }
+
+        foreach ($documents as $i=>$o) {
+            if ($o['type'] === 'cmis:folder') { unset($documents[$i]); }
+        }
+
+        return theme('cmisro_directorylisting', [
+            'basedir'    => $base,
+            'subdir'     => $sub,
+            'directories'=> $directories,
+            'documents'  => $documents,
+            'node'       => $node
+        ]);
+    }
+    catch (\Exception $e) {
+        print_r($e);
+    }
 }
 
-function cmisro_field_is_empty($item, $field)
-{
-	if ($field['type'] == 'cmisro_reference') {
-		return empty($item['reference']);
-	}
-}
-
-function cmisro_field_formatter_info()
-{
-	return [
-		'cmisro_formatter' => [
-			'label'       => t('Default'),
-			'field types' => ['cmisro_reference']
-		]
-	];
-}
-
-function cmisro_field_formatter_view($entity_type, $entity, $field, $instance, $lang, $items, $display)
-{
-	$element = [];
-	switch ($display['type']) {
-		case 'cmisro_formatter':
-            // Look up the item reference in the CMIS server
-            #$value = $item['reference'];
-			foreach ($items as $delta => $item) {
-                try {
-                    $element[$delta] = [
-                        '#markup' => theme('cmisro_reference', ['reference'=>$item['reference']])
-                    ];
-                }
-                catch (\Exception $e) {
-                    // The item references should have already been checked when the user
-                    // originally saved them in the content.
-                    // If there's a problem with one of them at display-time,
-                    // we can just ignore it.
-                }
-            }
-		break;
-	}
-	return $element;
-}
 
 /**
  * @implements hook_theme()
@@ -269,6 +212,17 @@ function cmisro_theme($existing, $type, $theme, $path)
             'variables' => ['list' => null, 'title' => null],
             'template'  => 'cmisro-list',
             'path'      => $path
+		],
+		'cmisro_directorylisting' => [
+            'template'  => 'cmisro-directorylisting',
+            'path'      => $path,
+            'variables' => [
+                'basedir'     => null,
+                'subdir'      => null,
+                'directories' => null,
+                'documents'   => null,
+                'node'        => null
+            ]
 		]
 	];
 }
@@ -287,7 +241,7 @@ function cmisro_reference_html($variables)
     else {
         $o = _cmisro_getObject($variables['reference']);
         if ($o['type'] === 'cmis:folder') {
-            $list = _cmisro_getFolder($o['id']);
+            $list = _cmisro_getFolderItems($o['id']);
             $html = theme('cmisro_list', ['list'=>$list, 'title'=>$o['title']]);
         }
         else {
@@ -311,7 +265,7 @@ function _cmisro_browser()
 
     $page    = pager_find_page();
     $offset  = $service->maxItems * $page;
-    $listing = _cmisro_getFolder($reference, $offset);
+    $listing = _cmisro_getFolderItems($reference, $offset);
 
     if (!empty($_GET['popup'])) {
         echo   theme('cmisro_popup',   ['current_directory'=>$o, 'listing' => $listing]);
