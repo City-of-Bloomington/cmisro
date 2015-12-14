@@ -9,7 +9,7 @@
  * @param stdClass $node     The drupal node object
  */
 ?>
-<section class="cmisro">
+<section class="cmisro container">
     <h1><?= $basedir['title']; ?></h1>
     <nav>
     <?php
@@ -24,8 +24,7 @@
     ?>
     </nav>
     <div class="listing">
-        <dl class="documents">
-            <dd><dl>
+        <dl><dd><dl>
                 <?php
                     foreach ($documents as $o) {
                         $a = theme('cmisro_item', ['object'=>$o]);

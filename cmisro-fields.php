@@ -148,10 +148,11 @@ function cmisro_field_formatter_view($entity_type, $entity, $field, $instance, $
 		case 'cmisro_directorylisting_formatter':
             foreach ($items as $i => $item) {
                 try {
-                    $o = _cmisro_getObject($item['reference']);
-                    $element[$i] = [
-                        '#markup' => l($o['title'], _cmisro_folder_uri($entity->nid, $o['id']))
-                    ];
+                    $o    = _cmisro_getObject($item['reference']);
+                    $uri  = _cmisro_folder_uri($entity->nid, $o['id']);
+                    $attr = (current_path() === $uri) ? ['attributes' => ['class' => ['current']]] : [];
+
+                    $element[$i] = ['#markup' => l($o['title'], $uri, $attr)];
                 }
                 catch (\Exception $e) {
                     // The item references should have already been checked when the user
