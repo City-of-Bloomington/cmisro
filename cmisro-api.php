@@ -1,6 +1,6 @@
 <?php
 /**
- * @copyright 2015 City of Bloomington, Indiana
+ * @copyright 2015-2016 City of Bloomington, Indiana
  * @license http://www.gnu.org/licenses/agpl.txt GNU/AGPL, see LICENSE.txt
  */
 /**
@@ -162,18 +162,20 @@ function _cmisro_getQuery($query)
 
 
 /**
- * Returns the FontAwesome class to use for a given cmis:type
+ * Returns the CSS class to use for a given cmis:type
+ *
+ * The CSS class name will be the basename of the mime_type
+ * for the file.  Invalid characters are converted to a dash.
  *
  * @return string
  */
 function _cmisro_class_for_type($type) {
-	static $lookup = [
-		'cmis:folder'=>'folder',
-		'application/octet-stream' => 'fa fa-file',
-		'image/png' => 'image',
-		'image/jpg' => 'image'
-	];
-	return array_key_exists($type, $lookup) ? $lookup[$type] : $type;
+    if ($type === 'cmis:folder') { return 'folder'; }
+
+    if (strpos($type, '/') !== false) {
+        list($t, $e) = explode('/', $type);
+        return preg_replace('[^a-z0-9\-]', '-', $e);
+    }
 }
 
 /**
@@ -202,4 +204,24 @@ function _cmisro_download($objectId=null)
 		echo _cmisro_service()->getContentStream($objectId);
 		exit();
 	}
+}
+
+/**
+ * Converts byte count into human readable filesize
+ *
+ * @param int     $size   Raw byte count
+ * @param string  $format Format string for sprintf()
+ * @return string
+ */
+function _cmisro_size_readable ($size, $format='%01.2f %s')
+{
+    // adapted from code at http://aidanlister.com/repos/v/function.size_readable.php
+    $sizes = ['B', 'KB', 'MB', 'GB'];
+    $lastsizestring = end($sizes);
+    foreach ($sizes as $sizestring) {
+        if ($size < 1024) { break; }
+        if ($sizestring != $lastsizestring) { $size /= 1024; }
+    }
+    if ($sizestring == $sizes[0]) { $format = '%01d %s'; } // Bytes aren't normally fractional
+    return sprintf($format, $size, $sizestring);
 }

@@ -57,7 +57,7 @@
 	?>
 	</table>
     <?php
-        if ($variables['listing']->hasMoreItems) {
+        if (!empty($variables['listing']->hasMoreItems)) {
             pager_default_initialize($variables['listing']->numItems, _cmisro_service()->maxItems);
             echo theme('pager');
         }

@@ -113,8 +113,9 @@ function cmisro_menu()
 			'access arguments'=> ['administer site configuration'],
 			'type'            => MENU_NORMAL_ITEM
 		],
-		'cmisro/download' => [
+		'cmisro/download/%' => [
 			'page callback'    => '_cmisro_download',
+			'page arguments'   => [2],
 			'access arguments' => ['access content']
 		],
 		'cmisro/browser' => [
