@@ -293,7 +293,7 @@ function cmisro_filter_info()
 function cmisro_links_filter($text, $filter, $format, $langcode, $cache, $cache_id)
 {
     return preg_replace_callback(
-        '/\{([a-f0-9\-]{36})\}/',
+        '/\{alfresco:([a-f0-9\-]{36})\}/',
         function ($matches) {
             try {
                 return theme('cmisro_reference', ['reference'=>$matches[1]]);
