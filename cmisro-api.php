@@ -79,7 +79,8 @@ function _cmisro_object($json)
 		}
 
 		if (!empty($p->{'cmis:contentStreamLength'})) { $o['filesize'] = $p->{'cmis:contentStreamLength'}; }
-        if (!empty($p->{'cmis:path'}))                { $o['path']     = $p->{'cmis:path'}; }
+        if (!empty($p->{'cmis:path'}               )) { $o['path'    ] = $p->{'cmis:path'};                }
+        if (!empty($p->{'alfcmis:nodeRef'}         )) { $o['nodeRef' ] = $p->{'alfcmis:nodeRef'};          }
 
         $o['filename'] = $p->{'cmis:name'};
 	}
@@ -204,6 +205,48 @@ function _cmisro_download($objectId=null)
 		echo _cmisro_service()->getContentStream($objectId);
 		exit();
 	}
+}
+
+/**
+ * Redirect the user to an object's location in Alfresco
+ *
+ * This should render an HTML page that redirects the user to
+ * the object's URL in alfresco share.
+ *
+ * @param string $objectId
+ */
+function _cmisro_proxy($objectId)
+{
+    $o   = _cmisro_getObject($objectId);
+    $url = _cmisro_getShareUrl($o['nodeRef']);
+    header("Location: $url");
+    exit();
+}
+
+
+/**
+ * Returns the share url for a node
+ *
+ * nodeRef should be in the form of:
+ * workspace://SpacesStore/bbb3c8b2-3e13-4a23-b00a-3441f34c6a05
+ *
+ * @param  string $nodeRef An alfresco nodeRef
+ * @return string
+ */
+function _cmisro_getShareUrl($nodeRef)
+{
+    $cmis = parse_url(variable_get('cmisro_url'));
+    $user = variable_get('cmisro_username');
+    $pass = variable_get('cmisro_password');
+
+    $url = "$cmis[scheme]://$user:$pass@$cmis[host]/alfresco/service/api/sites/shareUrl?".http_build_query(['nodeRef'=>$nodeRef]);
+    $response = cob_http_get($url);
+    if ($response) {
+        $json = json_decode($response);
+        if ($json) {
+            return $json->url;
+        }
+    }
 }
 
 /**
